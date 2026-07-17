@@ -27,7 +27,7 @@ loader:
 	docker compose run --rm loader uv run python main.py
 
 dbt-version:
-	docker compose run --rm dbt dbt --version
+	docker compose run --rm dbt uv run dbt --version
 
 superset-init:
 	docker compose exec superset superset db upgrade

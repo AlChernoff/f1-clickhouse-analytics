@@ -1,0 +1,9 @@
+[project]
+name = "f1-dbt"
+version = "0.1.0"
+description = "dbt project for F1 ClickHouse analytics"
+requires-python = ">=3.11"
+dependencies = [
+    "dbt-core==1.8.8",
+    "dbt-clickhouse==1.8.7",
+]
