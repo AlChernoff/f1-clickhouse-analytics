@@ -1,0 +1,32 @@
+# Local environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# uv
+uv.lock
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+logs/
+
+# Data
+data/raw/*.csv
+data/raw/*.zip
+data/raw/*.parquet
+
+# Docker / logs
+*.log
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,93 @@
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: f1_clickhouse
+    restart: unless-stopped
+    ports:
+      - "${CLICKHOUSE_HTTP_PORT}:8123"
+      - "${CLICKHOUSE_PORT}:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse/init:/docker-entrypoint-initdb.d
+      - ./clickhouse/config:/etc/clickhouse-server/config.d
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    container_name: f1_grafana
+    restart: unless-stopped
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+
+  superset:
+    image: apache/superset:4.0.2
+    container_name: f1_superset
+    restart: unless-stopped
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    ports:
+      - "${SUPERSET_PORT}:8088"
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+    volumes:
+      - superset_data:/app/superset_home
+      - ./superset:/app/project_superset
+
+  loader:
+    build:
+      context: .
+      dockerfile: loader/Dockerfile
+    container_name: f1_loader
+    profiles:
+      - tools
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - ./loader:/app
+      - ./data:/data
+    command: ["uv", "run", "python", "main.py"]
+
+  dbt:
+    build:
+      context: .
+      dockerfile: dbt/Dockerfile
+    container_name: f1_dbt
+    profiles:
+      - tools
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - ./dbt:/dbt
+    working_dir: /dbt
+    command: ["dbt", "--version"]
+
+volumes:
+  clickhouse_data:
+  grafana_data:
+  superset_data:
