@@ -1,13 +1,13 @@
 # Demo Script
 
-Черновой сценарий демонстрации проекта.
+A draft script for the project demo.
 
-1. Показать архитектуру проекта.
-2. Запустить инфраструктуру командой make up.
-3. Проверить ClickHouse через make clickhouse-client.
-4. Показать raw-таблицы и monitoring-таблицы.
-5. Запустить loader в replay mode.
-6. Показать рост количества строк в ClickHouse.
-7. Запустить dbt transformations.
-8. Показать BI dashboard в Superset.
-9. Показать monitoring dashboard в Grafana.
+1. Show the project architecture.
+2. Start the infrastructure with `make up`.
+3. Verify ClickHouse with `make clickhouse-client`.
+4. Show the raw and monitoring tables.
+5. Run the loader in replay mode.
+6. Show the row count increasing in ClickHouse.
+7. Run the dbt transformations.
+8. Show the BI dashboard in Superset.
+9. Show the monitoring dashboard in Grafana.

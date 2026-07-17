@@ -1,32 +1,32 @@
 # Deployment
 
-## Требования
+## Requirements
 
 - Docker
 - Docker Compose
 - make
 
-## Запуск
+## Start
 
 cp .env.example .env
 make up
 
-## Проверка контейнеров
+## Check containers
 
 make ps
 
-## Проверка ClickHouse
+## Check ClickHouse
 
 make clickhouse-client
 
-Внутри ClickHouse:
+Inside ClickHouse:
 
 SHOW DATABASES;
 
-## Остановка
+## Stop
 
 make down
 
-## Полный сброс с удалением volumes
+## Full reset with volume removal
 
 make reset

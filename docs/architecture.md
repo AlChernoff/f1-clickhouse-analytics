@@ -1,6 +1,6 @@
 # Architecture
 
-## Общая схема
+## Overview
 
 F1 CSV Dataset
       ↓
@@ -16,24 +16,24 @@ Superset BI Dashboard
       ↓
 Grafana Monitoring
 
-## Компоненты
+## Components
 
 ### ClickHouse
 
-Основное аналитическое хранилище проекта. Используется для raw-данных, аналитических витрин, агрегатов и мониторинговых таблиц.
+The main analytical data store of the project. It is used for raw data, analytical marts, aggregates, and monitoring tables.
 
 ### Python Replay Loader
 
-Сервис загрузки данных. Он читает исторические CSV-данные Формулы 1 и загружает их в ClickHouse небольшими батчами, имитируя поступление событий в реальном времени.
+The data loading service. It reads historical Formula 1 CSV data and loads it into ClickHouse in small batches, simulating real-time event ingestion.
 
 ### dbt
 
-Инструмент трансформации данных. Используется для построения staging, dwh и marts-слоев.
+A data transformation tool. It is used to build staging, dwh, and marts layers.
 
 ### Superset
 
-BI-инструмент для аналитических дашбордов по гонкам, пилотам, командам и результатам.
+A BI tool for analytical dashboards covering races, drivers, teams, and results.
 
 ### Grafana
 
-Инструмент мониторинга загрузки данных, состояния пайплайна и технических метрик.
+A monitoring tool for tracking data ingestion, pipeline state, and technical metrics.

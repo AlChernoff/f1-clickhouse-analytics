@@ -1,10 +1,10 @@
 # F1 ClickHouse Analytics
 
-Проект посвящен построению аналитической платформы для данных Формулы 1 на базе ClickHouse.
+This project focuses on building a ClickHouse-based analytics platform for Formula 1 data.
 
-Исторический датасет гонок F1 загружается в ClickHouse небольшими порциями с задержкой, что имитирует поступление данных в реальном времени. ClickHouse используется для хранения raw-данных и агрегатов, dbt — для построения аналитических витрин, Superset — для BI-дашбордов, а Grafana — для мониторинга загрузки и состояния системы.
+The historical F1 race dataset is loaded into ClickHouse in small delayed batches to simulate real-time event ingestion. ClickHouse is used to store raw data and aggregates, dbt is used to build analytical marts, Superset provides BI dashboards, and Grafana is used to monitor data loading and system health.
 
-## Стек
+## Stack
 
 - ClickHouse
 - Python
@@ -13,7 +13,7 @@
 - Grafana
 - Docker Compose
 
-## Архитектура
+## Architecture
 
 ```text
 F1 CSV Dataset
