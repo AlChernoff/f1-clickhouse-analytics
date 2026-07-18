@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS raw.drivers
     code Nullable(String),
     forename String,
     surname String,
-    dob Nullable(Date),
+    dob Nullable(Date32),
     nationality String,
     url String,
     loaded_at DateTime64(3) DEFAULT now64(3)
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS raw.races
     round UInt8,
     circuit_id UInt32,
     name String,
-    race_date Date,
+    race_date Date32,
     race_time Nullable(String),
     url String,
     loaded_at DateTime64(3) DEFAULT now64(3)
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS raw.pit_stops
     stop UInt8,
     lap UInt16,
     pit_time String,
-    duration Float32,
+    duration String,
     milliseconds UInt32,
     loaded_at DateTime64(3) DEFAULT now64(3)
 )
