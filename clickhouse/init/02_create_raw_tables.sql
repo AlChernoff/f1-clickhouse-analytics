@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS raw.results
     number Nullable(UInt16),
     grid Int16,
     position Nullable(UInt8),
-    position_text String,
+    position_text Nullable(String),
     position_order UInt8,
     points Float32,
     laps UInt16,

@@ -38,3 +38,20 @@ superset-init:
 		--email admin@example.com \
 		--password admin || true
 	docker compose exec superset superset init
+
+load-static:
+	docker compose run --rm loader uv run python load_static.py
+
+replay-lap-times:
+	docker compose run --rm loader uv run python replay_loader.py --table lap_times --batch-size 10000 --sleep-seconds 0.1
+
+replay-pit-stops:
+	docker compose run --rm loader uv run python replay_loader.py --table pit_stops --batch-size 1000 --sleep-seconds 0.1
+
+replay-all:
+	docker compose run --rm loader uv run python replay_loader.py --table all --batch-size 1000 --sleep-seconds 1
+replay-results:
+	docker compose run --rm loader uv run python replay_loader.py --table results --batch-size 10000 --sleep-seconds 0.1
+
+replay-qualifying:
+	docker compose run --rm loader uv run python replay_loader.py --table qualifying --batch-size 10000 --sleep-seconds 0.1

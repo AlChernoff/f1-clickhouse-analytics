@@ -1,0 +1,47 @@
+clickhouse:
+  host: clickhouse
+  port: 8123
+  username: default
+  password: ""
+  database: default
+
+paths:
+  raw_data_dir: /data/raw
+
+static_tables:
+  - source_file: drivers.csv
+    target_database: raw
+    target_table: drivers
+
+  - source_file: constructors.csv
+    target_database: raw
+    target_table: constructors
+
+  - source_file: circuits.csv
+    target_database: raw
+    target_table: circuits
+
+  - source_file: races.csv
+    target_database: raw
+    target_table: races
+
+event_tables:
+  - source_file: results.csv
+    target_database: raw
+    target_table: results
+
+  - source_file: qualifying.csv
+    target_database: raw
+    target_table: qualifying
+
+  - source_file: lap_times.csv
+    target_database: raw
+    target_table: lap_times
+
+  - source_file: pit_stops.csv
+    target_database: raw
+    target_table: pit_stops
+
+replay:
+  batch_size: 1000
+  sleep_seconds: 1
