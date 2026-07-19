@@ -55,3 +55,15 @@ replay-results:
 
 replay-qualifying:
 	docker compose run --rm loader uv run python replay_loader.py --table qualifying --batch-size 10000 --sleep-seconds 0.1
+
+dbt-debug:
+	docker compose run --rm dbt uv run dbt debug --profiles-dir .
+
+dbt-run:
+	docker compose run --rm dbt uv run dbt run --profiles-dir .
+
+dbt-test:
+	docker compose run --rm dbt uv run dbt test --profiles-dir .
+
+dbt-build:
+	docker compose run --rm dbt uv run dbt build --profiles-dir .
