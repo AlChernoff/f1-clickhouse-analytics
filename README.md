@@ -95,3 +95,8 @@ Grafana Monitoring and Superset BI
 ## License
 
 Distributed under the [MIT License](LICENSE).
+
+## Presentation
+
+- [Project presentation](presentation/f1_clickhouse_project_defense.pptx)
+- [Speaker notes](presentation/speaker_notes.md)
