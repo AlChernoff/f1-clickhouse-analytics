@@ -1,6 +1,6 @@
 # F1 ClickHouse Analytics
 
-[![Quality checks](https://github.com/AlChernoff/f1-clickhouse-analytics/actions/workflows/quality.yml/badge.svg)](https://github.com/AlChernoff/f1-clickhouse-analytics/actions/workflows/quality.yml)
+[![Quality checks](https://github.com/AlChernoff/f1-clickhouse-analytics/actions/workflows/quality.yml/badge.svg?branch=main)](https://github.com/AlChernoff/f1-clickhouse-analytics/actions/workflows/quality.yml?query=branch%3Amain)
 
 Local analytics platform for Formula 1 data: Python loads CSV files into ClickHouse, dbt builds analytical views, Grafana monitors ingestion, and Superset presents dashboards.
 
@@ -81,3 +81,17 @@ ClickHouse DWH and MARTS
       ↓
 Grafana Monitoring and Superset BI
 ```
+
+## Dashboards
+
+### Grafana monitoring
+
+![Grafana monitoring dashboard](docs/assets/grafana-monitoring.png)
+
+### Superset analytics
+
+![Superset analytics dashboard](docs/assets/superset-dashboard.png)
+
+## License
+
+Distributed under the [MIT License](LICENSE).
