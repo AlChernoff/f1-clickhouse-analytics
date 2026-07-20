@@ -1,32 +1,27 @@
-# Deployment
+# Local deployment
 
-## Requirements
+Run commands from the project directory.
 
-- Docker
-- Docker Compose
-- make
+## First start
 
-## Start
-
+```bash
 cp .env.example .env
 make up
-
-## Check containers
-
 make ps
+```
 
-## Check ClickHouse
+`make up` waits for ClickHouse and Superset readiness. Build images explicitly after Dockerfile or dependency changes:
 
-make clickhouse-client
+```bash
+make build
+make build SERVICE=loader
+```
 
-Inside ClickHouse:
+## Stop or recreate
 
-SHOW DATABASES;
-
-## Stop
-
+```bash
 make down
+make reset  # removes local Docker volumes
+```
 
-## Full reset with volume removal
-
-make reset
+Use `make clickhouse` to open an interactive ClickHouse client.

@@ -44,5 +44,6 @@ Dashboard показывает:
 Dashboard использует таблицы:
 
 - monitoring.load_batches
+- monitoring.load_errors
 - monitoring.loader_stats_1m
 - monitoring.pipeline_status

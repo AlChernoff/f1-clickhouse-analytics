@@ -1,68 +1,46 @@
 # Runbook
 
-## Start services
+## Standard workflow
 
+```bash
 make up
-
-## Stop services
-
-make down
-
-## Recreate local demo environment
-
-Warning: removes local Docker volumes.
-
-make demo-reset
-
-## Check CSV files
-
 make check-data
+make load
+make transform
+make demo-show
+```
 
-## Load data
+To replay only one event source, use:
 
-make load-static
-make replay-pit-stops
-make replay-lap-times
-make replay-results
-make replay-qualifying
+```bash
+make replay TABLE=lap_times
+```
 
-## Run transformations
+Available values: `lap_times`, `pit_stops`, `results`, `qualifying`, and `all`.
 
-make dbt-run
-make dbt-test
+## Diagnostics
 
-## Monitoring
-
-Grafana:
-
-http://localhost:3000
-
-Default local credentials:
-
-admin / admin
-
-Dashboard:
-
-F1 Analytics → F1 Loader Monitoring
-
-## BI dashboard
-
-Superset:
-
-http://localhost:8088
-
-Default local credentials:
-
-admin / admin
-
-Dashboard:
-
-F1 Analytics Dashboard
-
-## Smoke test
-
+```bash
+make ps
+make logs SERVICE=clickhouse
 make smoke-test
+make ci
+make clickhouse
+```
 
-## Full demo
+## Data and environment recovery
 
-make demo
+```bash
+make clean-data  # removes raw, monitoring, DWH and mart data; retains volumes
+make reset       # removes all local project volumes and starts a clean stack
+make demo        # reset, load, transform, initialize BI, and print checks
+```
+
+`make reset` and `make demo` delete local Docker volumes.
+
+## Dashboards
+
+- Grafana: <http://localhost:3000>, dashboard **F1 Analytics → F1 Loader Monitoring**.
+- Superset: <http://localhost:8088>, dashboard **F1 Analytics Dashboard**.
+
+Credentials are defined in `.env`; `.env.example` provides local defaults.

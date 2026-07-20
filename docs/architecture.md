@@ -2,6 +2,7 @@
 
 ## Overview
 
+```text
 F1 CSV Dataset
       ↓
 Python Replay Loader
@@ -15,6 +16,7 @@ ClickHouse MARTS
 Superset BI Dashboard
       ↓
 Grafana Monitoring
+```
 
 ## Components
 
