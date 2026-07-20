@@ -93,6 +93,53 @@ superset-logs:
 	docker compose logs -f superset
 
 superset-import:
-	docker compose exec superset superset import-dashboards \
-		-p /app/project_superset/dashboards/f1_dashboard.zip \
-		-u admin
+	docker compose exec superset bash /app/project_superset/import_dashboard.sh
+
+demo-reset:
+	docker compose down -v
+	docker compose up -d clickhouse grafana superset
+
+demo-load:
+	$(MAKE) check-data
+	docker compose run --rm loader uv run python load_static.py
+	docker compose run --rm loader uv run python replay_loader.py --table pit_stops --batch-size 1000 --sleep-seconds 0.1
+	docker compose run --rm loader uv run python replay_loader.py --table lap_times --batch-size 10000 --sleep-seconds 0.1
+	docker compose run --rm loader uv run python replay_loader.py --table results --batch-size 10000 --sleep-seconds 0.1
+	docker compose run --rm loader uv run python replay_loader.py --table qualifying --batch-size 10000 --sleep-seconds 0.1
+
+demo-transform:
+	docker compose run --rm dbt uv run dbt run --profiles-dir .
+	docker compose run --rm dbt uv run dbt test --profiles-dir .
+
+demo-check:
+	docker compose exec clickhouse clickhouse-client --query "SELECT 'raw.drivers' AS table_name, count() AS rows_count FROM raw.drivers UNION ALL SELECT 'raw.races', count() FROM raw.races UNION ALL SELECT 'raw.results', count() FROM raw.results UNION ALL SELECT 'raw.lap_times', count() FROM raw.lap_times UNION ALL SELECT 'raw.pit_stops', count() FROM raw.pit_stops UNION ALL SELECT 'raw.qualifying', count() FROM raw.qualifying"
+	docker compose exec clickhouse clickhouse-client --query "SELECT driver_name, total_points, wins, podiums FROM marts.mart_driver_performance ORDER BY total_points DESC LIMIT 10"
+	docker compose exec clickhouse clickhouse-client --query "SELECT source_name, target_table, rows_loaded, status FROM monitoring.load_batches ORDER BY started_at DESC LIMIT 10"
+
+demo:
+	$(MAKE) demo-reset
+	$(MAKE) demo-load
+	$(MAKE) demo-transform
+	$(MAKE) superset-init
+	$(MAKE) superset-import
+	$(MAKE) demo-check
+
+check-data:
+	test -f data/raw/drivers.csv
+	test -f data/raw/constructors.csv
+	test -f data/raw/circuits.csv
+	test -f data/raw/races.csv
+	test -f data/raw/results.csv
+	test -f data/raw/lap_times.csv
+	test -f data/raw/pit_stops.csv
+	test -f data/raw/qualifying.csv
+	@echo "All required CSV files are present."
+
+smoke-test:
+	docker compose ps
+	docker compose exec clickhouse clickhouse-client --query "SELECT 1"
+	docker compose run --rm loader uv run python main.py
+	docker compose run --rm dbt uv run dbt debug --profiles-dir .
+
+demo-show:
+	bash scripts/demo_show.sh
