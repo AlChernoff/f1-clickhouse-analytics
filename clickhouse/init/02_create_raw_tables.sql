@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS raw.drivers
     url String,
     loaded_at DateTime64(3) DEFAULT now64(3)
 )
-ENGINE = MergeTree
+ENGINE = ReplacingMergeTree(loaded_at)
 ORDER BY driver_id;
 
 CREATE TABLE IF NOT EXISTS raw.constructors
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS raw.constructors
     url String,
     loaded_at DateTime64(3) DEFAULT now64(3)
 )
-ENGINE = MergeTree
+ENGINE = ReplacingMergeTree(loaded_at)
 ORDER BY constructor_id;
 
 CREATE TABLE IF NOT EXISTS raw.circuits
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS raw.circuits
     url String,
     loaded_at DateTime64(3) DEFAULT now64(3)
 )
-ENGINE = MergeTree
+ENGINE = ReplacingMergeTree(loaded_at)
 ORDER BY circuit_id;
 
 CREATE TABLE IF NOT EXISTS raw.races
@@ -54,9 +54,9 @@ CREATE TABLE IF NOT EXISTS raw.races
     url String,
     loaded_at DateTime64(3) DEFAULT now64(3)
 )
-ENGINE = MergeTree
+ENGINE = ReplacingMergeTree(loaded_at)
 PARTITION BY year
-ORDER BY (year, round, race_id);
+ORDER BY race_id;
 
 CREATE TABLE IF NOT EXISTS raw.results
 (
@@ -80,9 +80,9 @@ CREATE TABLE IF NOT EXISTS raw.results
     status_id UInt32,
     loaded_at DateTime64(3) DEFAULT now64(3)
 )
-ENGINE = MergeTree
+ENGINE = ReplacingMergeTree(loaded_at)
 PARTITION BY intDiv(race_id, 100)
-ORDER BY (race_id, driver_id, constructor_id);
+ORDER BY result_id;
 
 CREATE TABLE IF NOT EXISTS raw.lap_times
 (
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS raw.lap_times
     milliseconds UInt32,
     loaded_at DateTime64(3) DEFAULT now64(3)
 )
-ENGINE = MergeTree
+ENGINE = ReplacingMergeTree(loaded_at)
 PARTITION BY intDiv(race_id, 100)
 ORDER BY (race_id, driver_id, lap);
 
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS raw.pit_stops
     milliseconds UInt32,
     loaded_at DateTime64(3) DEFAULT now64(3)
 )
-ENGINE = MergeTree
+ENGINE = ReplacingMergeTree(loaded_at)
 PARTITION BY intDiv(race_id, 100)
 ORDER BY (race_id, driver_id, stop);
 
@@ -126,6 +126,6 @@ CREATE TABLE IF NOT EXISTS raw.qualifying
     q3 Nullable(String),
     loaded_at DateTime64(3) DEFAULT now64(3)
 )
-ENGINE = MergeTree
+ENGINE = ReplacingMergeTree(loaded_at)
 PARTITION BY intDiv(race_id, 100)
-ORDER BY (race_id, driver_id, position);
+ORDER BY qualify_id;
