@@ -27,7 +27,7 @@ Duplicate rows may still be visible before ClickHouse background merges complete
 
 ## dbt staging layer
 
-The dbt staging layer also applies logical deduplication using row_number over business keys and keeps the latest loaded record.
+The dbt staging layer also applies logical deduplication using `row_number` over business keys and keeps the latest loaded record. It orders rows by `loaded_at DESC` and then by `cityHash64(*) DESC`, so records with the same millisecond timestamp are selected deterministically.
 
 This guarantees that analytical DWH models and marts are duplicate-free even if duplicate rows temporarily exist in raw tables.
 

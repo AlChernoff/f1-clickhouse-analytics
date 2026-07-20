@@ -1,5 +1,7 @@
 # F1 ClickHouse Analytics
 
+[![Quality checks](https://github.com/AlChernoff/f1-clickhouse-analytics/actions/workflows/quality.yml/badge.svg)](https://github.com/AlChernoff/f1-clickhouse-analytics/actions/workflows/quality.yml)
+
 Local analytics platform for Formula 1 data: Python loads CSV files into ClickHouse, dbt builds analytical views, Grafana monitors ingestion, and Superset presents dashboards.
 
 ## Quick start
@@ -42,7 +44,29 @@ make ci                    # run local preflight checks
 
 Run `make help` to see the complete public command list. Detailed operational guidance is in [docs/runbook.md](docs/runbook.md); the presentation flow is in [docs/demo_script.md](docs/demo_script.md).
 
+## Data source
+
+The project uses the Formula 1 World Championship dataset from [Kaggle](https://www.kaggle.com/datasets/rohanrao/formula-1-world-championship-1950-2020). See [data/raw/README.md](data/raw/README.md) for the required files and source-data licensing notes.
+
+## What this project demonstrates
+
+- configurable replay ingestion from historical CSV files;
+- ClickHouse raw tables with ReplacingMergeTree deduplication;
+- dbt staging, DWH, and mart modelling with data-quality tests;
+- operational observability through loader monitoring tables and Grafana;
+- reproducible local setup with Docker Compose, lockfiles, unit tests, and static checks.
+
 ## Architecture
+
+```mermaid
+flowchart LR
+    CSV[F1 CSV dataset] --> Loader[Python replay loader]
+    Loader --> Raw[ClickHouse raw layer]
+    Raw --> dbt[dbt transformations]
+    dbt --> Marts[ClickHouse DWH and marts]
+    Loader --> Grafana[Grafana monitoring]
+    Marts --> Superset[Superset BI]
+```
 
 ```text
 F1 CSV Dataset

@@ -1,20 +1,18 @@
 # Raw data
 
-В эту папку нужно положить CSV-файлы датасета Formula 1 World Championship.
+Place the Formula 1 World Championship CSV dataset in this directory.
 
-Рекомендуемый источник:
+Recommended source: [Formula 1 World Championship (1950–2020) on Kaggle](https://www.kaggle.com/datasets/rohanrao/formula-1-world-championship-1950-2020).
 
-https://www.kaggle.com/datasets/rohanrao/formula-1-world-championship-1950-2020
+Required files for this project:
 
-Нужные файлы для MVP:
+- `drivers.csv`
+- `constructors.csv`
+- `circuits.csv`
+- `races.csv`
+- `results.csv`
+- `lap_times.csv`
+- `pit_stops.csv`
+- `qualifying.csv`
 
-- drivers.csv
-- constructors.csv
-- circuits.csv
-- races.csv
-- results.csv
-- lap_times.csv
-- pit_stops.csv
-- qualifying.csv
-
-Файлы CSV не коммитятся в git, потому что они могут быть большими.
+The CSV files are intentionally excluded from Git because of their size. Review the dataset page and its license before redistributing the source data.

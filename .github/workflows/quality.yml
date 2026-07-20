@@ -1,0 +1,33 @@
+name: Quality checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  loader-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Create local environment file
+        run: cp .env.example .env
+
+      - name: Validate Docker Compose configuration
+        run: docker compose config --quiet
+
+      - name: Build loader image
+        run: docker compose build loader
+
+      - name: Install locked loader dependencies
+        run: docker compose run --rm --no-deps loader uv sync --frozen
+
+      - name: Lint loader code
+        run: docker compose run --rm --no-deps loader uv run ruff check .
+
+      - name: Run loader unit tests
+        run: docker compose run --rm --no-deps loader uv run python -m unittest discover -s tests
