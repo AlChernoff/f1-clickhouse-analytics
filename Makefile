@@ -29,16 +29,6 @@ loader:
 dbt-version:
 	docker compose run --rm dbt uv run dbt --version
 
-superset-init:
-	docker compose exec superset superset db upgrade
-	docker compose exec superset superset fab create-admin \
-		--username admin \
-		--firstname Admin \
-		--lastname User \
-		--email admin@example.com \
-		--password admin || true
-	docker compose exec superset superset init
-
 load-static:
 	docker compose run --rm loader uv run python load_static.py
 
@@ -85,3 +75,24 @@ truncate-monitoring:
 	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.loader_stats_1m"
 
 demo-reset-data: truncate-raw truncate-monitoring
+
+superset-build:
+	docker compose build superset
+
+superset-init:
+	docker compose exec superset superset db upgrade
+	docker compose exec superset superset fab create-admin \
+		--username admin \
+		--firstname Admin \
+		--lastname User \
+		--email admin@example.com \
+		--password admin || true
+	docker compose exec superset superset init
+
+superset-logs:
+	docker compose logs -f superset
+
+superset-import:
+	docker compose exec superset superset import-dashboards \
+		-p /app/project_superset/dashboards/f1_dashboard.zip \
+		-u admin
