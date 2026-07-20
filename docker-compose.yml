@@ -12,13 +12,12 @@ services:
       - ./clickhouse/config:/etc/clickhouse-server/config.d
     environment:
       CLICKHOUSE_DB: default
-      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
     healthcheck:
       test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
 
   grafana:
     image: grafana/grafana:11.2.2

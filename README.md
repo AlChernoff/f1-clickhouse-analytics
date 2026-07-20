@@ -29,3 +29,37 @@ ClickHouse MARTS
 Superset BI Dashboard
       ↓
 Grafana Monitoring
+
+## End-to-end demo
+
+Required CSV files must be placed in `data/raw`.
+
+Check input data:
+
+    make check-data
+
+Run the full local demo from scratch:
+
+    make demo
+
+Warning: `make demo` removes local Docker volumes and recreates the demo environment.
+
+Useful URLs:
+
+- Grafana: http://localhost:3000
+- Superset: http://localhost:8088
+
+Default local credentials:
+
+- username: admin
+- password: admin
+
+## Demo flow
+
+    CSV files
+      -> Python replay loader
+      -> ClickHouse raw layer
+      -> dbt staging / dwh / marts
+      -> Grafana monitoring
+      -> Superset BI dashboard
+
