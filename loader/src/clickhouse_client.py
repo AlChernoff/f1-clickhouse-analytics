@@ -4,14 +4,19 @@ import os
 import time
 from typing import Any
 
-import clickhouse_connect
-
 
 def get_client() -> Any:
+    import clickhouse_connect
+
     host = os.getenv("CLICKHOUSE_HOST", "clickhouse")
     port = int(os.getenv("CLICKHOUSE_HTTP_PORT", "8123"))
-    username = os.getenv("CLICKHOUSE_USER", "default")
-    password = os.getenv("CLICKHOUSE_PASSWORD", "")
+    username = os.getenv("CLICKHOUSE_USER")
+    password = os.getenv("CLICKHOUSE_PASSWORD")
+
+    if not username or password is None:
+        raise RuntimeError(
+            "CLICKHOUSE_USER and CLICKHOUSE_PASSWORD must be set in the environment"
+        )
 
     last_error: Exception | None = None
 

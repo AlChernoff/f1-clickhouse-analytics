@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 from pathlib import Path
 from uuid import uuid4
 
@@ -7,7 +8,7 @@ import yaml
 
 from src.clickhouse_client import get_client
 from src.csv_utils import apply_table_specific_mapping, clean_dataframe, normalize_columns, read_csv, select_target_columns
-from src.monitoring import utc_now, write_load_batch, write_pipeline_status
+from src.monitoring import utc_now, write_load_batch, write_load_error, write_pipeline_status
 
 
 def load_table(client, raw_data_dir: Path, item: dict, run_id) -> None:
@@ -47,7 +48,7 @@ def load_table(client, raw_data_dir: Path, item: dict, run_id) -> None:
     except Exception as exc:
         finished_at = utc_now()
 
-        write_load_batch(
+        batch_id = write_load_batch(
             client=client,
             run_id=run_id,
             source_name=source_file,
@@ -58,6 +59,16 @@ def load_table(client, raw_data_dir: Path, item: dict, run_id) -> None:
             finished_at=finished_at,
             status="failed",
             error_message=str(exc),
+        )
+        write_load_error(
+            client=client,
+            run_id=run_id,
+            batch_id=batch_id,
+            source_name=source_file,
+            target_database=target_database,
+            target_table=target_table,
+            error_message=str(exc),
+            error_details=traceback.format_exc(),
         )
 
         raise
@@ -82,16 +93,26 @@ def main() -> None:
         details=str(run_id),
     )
 
-    for item in config["static_tables"]:
-        load_table(client, raw_data_dir, item, run_id)
-
-    write_pipeline_status(
-        client=client,
-        component="load_static",
-        status="finished",
-        message="Static data loading finished",
-        details=str(run_id),
-    )
+    try:
+        for item in config["static_tables"]:
+            load_table(client, raw_data_dir, item, run_id)
+    except Exception as exc:
+        write_pipeline_status(
+            client=client,
+            component="load_static",
+            status="failed",
+            message="Static data loading failed",
+            details=f"run_id={run_id}; error={exc}",
+        )
+        raise
+    else:
+        write_pipeline_status(
+            client=client,
+            component="load_static",
+            status="finished",
+            message="Static data loading finished",
+            details=str(run_id),
+        )
 
 
 if __name__ == "__main__":

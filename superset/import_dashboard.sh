@@ -9,6 +9,7 @@ CLICKHOUSE_PASSWORD="${CLICKHOUSE_PASSWORD:-f1_app_password}"
 CLICKHOUSE_HOST="${CLICKHOUSE_HOST:-clickhouse}"
 CLICKHOUSE_HTTP_PORT="${CLICKHOUSE_HTTP_PORT:-8123}"
 CLICKHOUSE_DATABASE="${CLICKHOUSE_DATABASE:-marts}"
+SUPERSET_ADMIN_USER="${SUPERSET_ADMIN_USER:-admin}"
 
 python - <<PY
 import zipfile
@@ -36,4 +37,4 @@ with zipfile.ZipFile(source_zip, "r") as zin:
 print(f"Created patched Superset dashboard import: {patched_zip}")
 PY
 
-superset import-dashboards -p "${PATCHED_ZIP}" -u admin
+superset import-dashboards -p "${PATCHED_ZIP}" -u "${SUPERSET_ADMIN_USER}"

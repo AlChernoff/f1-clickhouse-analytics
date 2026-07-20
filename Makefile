@@ -1,145 +1,212 @@
-.PHONY: up down restart ps logs reset clickhouse-client loader dbt-version superset-init
+SHELL := /bin/sh
+.DEFAULT_GOAL := help
 
-up:
-	docker compose up -d clickhouse grafana superset
+COMPOSE ?= docker compose
+WAIT_ATTEMPTS ?= 30
+WAIT_SECONDS ?= 2
+REPLAY_BATCH_SIZE ?= 10000
+REPLAY_SLEEP_SECONDS ?= 0.1
 
-down:
-	docker compose down
+DATA_FILES := drivers.csv constructors.csv circuits.csv races.csv results.csv lap_times.csv pit_stops.csv qualifying.csv
 
-restart:
-	docker compose down
-	docker compose up -d clickhouse grafana superset
+.PHONY: help check-env up down restart ps logs reset clickhouse-client \
+	loader dbt-version load-static replay-lap-times replay-pit-stops replay-results \
+	replay-qualifying replay-all dbt-debug dbt-run dbt-test dbt-build \
+	truncate-raw truncate-monitoring drop-dwh drop-marts demo-reset-data build \
+	loader-build dbt-image-build superset-build superset-init \
+	superset-logs superset-import demo-reset demo-load demo-transform demo-check demo \
+	check-data test smoke-test ci demo-show wait-superset
 
-ps:
-	docker compose ps
+.NOTPARALLEL: demo
 
-logs:
-	docker compose logs -f
+define wait_for_superset
+	@attempt=1; \
+	until $(COMPOSE) exec -T superset python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/health', timeout=3).read()" >/dev/null 2>&1; do \
+		if [ $$attempt -ge $(WAIT_ATTEMPTS) ]; then \
+			echo "Superset did not become ready after $(WAIT_ATTEMPTS) attempts." >&2; \
+			$(COMPOSE) logs --tail=100 superset >&2 || true; \
+			exit 1; \
+		fi; \
+		echo "Waiting for Superset ($$attempt/$(WAIT_ATTEMPTS))..."; \
+		sleep $(WAIT_SECONDS); \
+		attempt=$$((attempt + 1)); \
+	done
+endef
 
-reset:
-	docker compose down -v
-	docker compose up -d clickhouse grafana superset
+help: ## Show available commands
+	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_-]+:.*##/ {printf "%-22s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-clickhouse-client:
-	docker compose exec clickhouse clickhouse-client
+check-env: ## Validate local Docker Compose configuration
+	@test -f .env || { echo "Missing .env. Create it from .env.example before starting the stack." >&2; exit 1; }
+	@$(COMPOSE) config --quiet
 
-loader:
-	docker compose run --rm loader uv run python main.py
+up: check-env ## Start the application stack and wait for readiness
+	$(COMPOSE) up -d --wait clickhouse grafana superset
+	$(wait_for_superset)
 
-dbt-version:
-	docker compose run --rm dbt uv run dbt --version
+down: ## Stop the application stack
+	$(COMPOSE) down
 
-load-static:
-	docker compose run --rm loader uv run python load_static.py
+restart: ## Restart the application stack without deleting volumes
+	$(COMPOSE) down
+	$(COMPOSE) up -d --wait clickhouse grafana superset
+	$(wait_for_superset)
 
-replay-lap-times:
-	docker compose run --rm loader uv run python replay_loader.py --table lap_times --batch-size 10000 --sleep-seconds 0.1
+ps: ## Show application containers
+	$(COMPOSE) ps
 
-replay-pit-stops:
-	docker compose run --rm loader uv run python replay_loader.py --table pit_stops --batch-size 1000 --sleep-seconds 0.1
+logs: ## Follow logs for all services
+	$(COMPOSE) logs -f
 
-replay-all:
-	docker compose run --rm loader uv run python replay_loader.py --table all --batch-size 1000 --sleep-seconds 1
-replay-results:
-	docker compose run --rm loader uv run python replay_loader.py --table results --batch-size 10000 --sleep-seconds 0.1
+reset: check-env ## Remove volumes and recreate the application stack
+	@echo "WARNING: this removes all local Docker volumes for this project."
+	$(COMPOSE) down -v
+	$(COMPOSE) up -d --wait clickhouse grafana superset
+	$(wait_for_superset)
 
-replay-qualifying:
-	docker compose run --rm loader uv run python replay_loader.py --table qualifying --batch-size 10000 --sleep-seconds 0.1
+clickhouse-client: ## Open an interactive ClickHouse client
+	$(COMPOSE) exec clickhouse clickhouse-client
 
-dbt-debug:
-	docker compose run --rm dbt uv run dbt debug --profiles-dir .
+loader: ## Check that the loader container can connect to ClickHouse
+	$(COMPOSE) run --rm loader uv run python -c "from src.clickhouse_client import get_client; print(get_client().command('SELECT 1'))"
 
-dbt-run:
-	docker compose run --rm dbt uv run dbt run --profiles-dir .
+dbt-version: ## Show the installed dbt version
+	$(COMPOSE) run --rm dbt uv run dbt --version
 
-dbt-test:
-	docker compose run --rm dbt uv run dbt test --profiles-dir .
+load-static: check-data ## Load static CSV dimensions
+	$(COMPOSE) run --rm loader uv run python load_static.py
 
-dbt-build:
-	docker compose run --rm dbt uv run dbt build --profiles-dir .
+replay-lap-times: check-data ## Replay lap times
+	$(COMPOSE) run --rm loader uv run python replay_loader.py --table lap_times --batch-size $(REPLAY_BATCH_SIZE) --sleep-seconds $(REPLAY_SLEEP_SECONDS)
 
-truncate-raw:
-	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.drivers"
-	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.constructors"
-	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.circuits"
-	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.races"
-	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.results"
-	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.lap_times"
-	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.pit_stops"
-	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.qualifying"
+replay-pit-stops: check-data ## Replay pit stops
+	$(COMPOSE) run --rm loader uv run python replay_loader.py --table pit_stops --batch-size $(REPLAY_BATCH_SIZE) --sleep-seconds $(REPLAY_SLEEP_SECONDS)
 
-truncate-monitoring:
-	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.load_batches"
-	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.load_errors"
-	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.pipeline_status"
-	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.loader_stats_1m"
+replay-results: check-data ## Replay race results
+	$(COMPOSE) run --rm loader uv run python replay_loader.py --table results --batch-size $(REPLAY_BATCH_SIZE) --sleep-seconds $(REPLAY_SLEEP_SECONDS)
 
-demo-reset-data: truncate-raw truncate-monitoring
+replay-qualifying: check-data ## Replay qualifying results
+	$(COMPOSE) run --rm loader uv run python replay_loader.py --table qualifying --batch-size $(REPLAY_BATCH_SIZE) --sleep-seconds $(REPLAY_SLEEP_SECONDS)
 
-superset-build:
-	docker compose build superset
+replay-all: check-data ## Replay all event tables
+	$(COMPOSE) run --rm loader uv run python replay_loader.py --table all --batch-size $(REPLAY_BATCH_SIZE) --sleep-seconds $(REPLAY_SLEEP_SECONDS)
 
-superset-init:
-	docker compose exec superset superset db upgrade
-	docker compose exec superset superset fab create-admin \
-		--username admin \
-		--firstname Admin \
-		--lastname User \
-		--email admin@example.com \
-		--password admin || true
-	docker compose exec superset superset init
+dbt-debug: ## Validate dbt connectivity
+	$(COMPOSE) run --rm dbt uv run dbt debug --profiles-dir .
 
-superset-logs:
-	docker compose logs -f superset
+dbt-run: ## Run dbt models
+	$(COMPOSE) run --rm dbt uv run dbt run --profiles-dir .
 
-superset-import:
-	docker compose exec superset bash /app/project_superset/import_dashboard.sh
+dbt-test: ## Run dbt tests
+	$(COMPOSE) run --rm dbt uv run dbt test --profiles-dir .
 
-demo-reset:
-	docker compose down -v
-	docker compose up -d clickhouse grafana superset
+dbt-build: ## Run dbt models and tests
+	$(COMPOSE) run --rm dbt uv run dbt build --profiles-dir .
 
-demo-load:
-	$(MAKE) check-data
-	docker compose run --rm loader uv run python load_static.py
-	docker compose run --rm loader uv run python replay_loader.py --table pit_stops --batch-size 1000 --sleep-seconds 0.1
-	docker compose run --rm loader uv run python replay_loader.py --table lap_times --batch-size 10000 --sleep-seconds 0.1
-	docker compose run --rm loader uv run python replay_loader.py --table results --batch-size 10000 --sleep-seconds 0.1
-	docker compose run --rm loader uv run python replay_loader.py --table qualifying --batch-size 10000 --sleep-seconds 0.1
+truncate-raw: ## Remove all data from raw tables
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.drivers"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.constructors"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.circuits"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.races"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.results"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.lap_times"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.pit_stops"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.qualifying"
 
-demo-transform:
-	docker compose run --rm dbt uv run dbt run --profiles-dir .
-	docker compose run --rm dbt uv run dbt test --profiles-dir .
+truncate-monitoring: ## Remove loader monitoring history
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.load_batches"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.load_errors"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.pipeline_status"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.loader_stats_1m"
 
-demo-check:
-	docker compose exec clickhouse clickhouse-client --query "SELECT 'raw.drivers' AS table_name, count() AS rows_count FROM raw.drivers UNION ALL SELECT 'raw.races', count() FROM raw.races UNION ALL SELECT 'raw.results', count() FROM raw.results UNION ALL SELECT 'raw.lap_times', count() FROM raw.lap_times UNION ALL SELECT 'raw.pit_stops', count() FROM raw.pit_stops UNION ALL SELECT 'raw.qualifying', count() FROM raw.qualifying"
-	docker compose exec clickhouse clickhouse-client --query "SELECT driver_name, total_points, wins, podiums FROM marts.mart_driver_performance ORDER BY total_points DESC LIMIT 10"
-	docker compose exec clickhouse clickhouse-client --query "SELECT source_name, target_table, rows_loaded, status FROM monitoring.load_batches ORDER BY started_at DESC LIMIT 10"
+drop-dwh: ## Drop dbt views in the DWH layer
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_circuits"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_constructors"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_drivers"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_lap_times"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_pit_stops"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_qualifying"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_races"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_results"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.dim_constructors"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.dim_drivers"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.dim_races"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.fact_lap_times"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.fact_pit_stops"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.fact_race_results"
 
-demo:
-	$(MAKE) demo-reset
-	$(MAKE) demo-load
-	$(MAKE) demo-transform
-	$(MAKE) superset-init
-	$(MAKE) superset-import
-	$(MAKE) demo-check
+drop-marts: ## Drop dbt views in the marts layer
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS marts.mart_constructor_performance"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS marts.mart_driver_performance"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS marts.mart_lap_time_analysis"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS marts.mart_pit_stop_efficiency"
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS marts.mart_season_summary"
 
-check-data:
-	test -f data/raw/drivers.csv
-	test -f data/raw/constructors.csv
-	test -f data/raw/circuits.csv
-	test -f data/raw/races.csv
-	test -f data/raw/results.csv
-	test -f data/raw/lap_times.csv
-	test -f data/raw/pit_stops.csv
-	test -f data/raw/qualifying.csv
-	@echo "All required CSV files are present."
+demo-reset-data: truncate-raw truncate-monitoring drop-dwh drop-marts ## Remove all loaded and transformed demo data
 
-smoke-test:
-	docker compose ps
-	docker compose exec clickhouse clickhouse-client --query "SELECT 1"
-	docker compose run --rm loader uv run python main.py
-	docker compose run --rm dbt uv run dbt debug --profiles-dir .
+build: ## Build all local images
+	$(COMPOSE) build
 
-demo-show:
-	bash scripts/demo_show.sh
+loader-build: ## Build the loader image
+	$(COMPOSE) build loader
+
+dbt-image-build: ## Build the dbt image
+	$(COMPOSE) build dbt
+
+superset-build: ## Build the Superset image
+	$(COMPOSE) build superset
+
+wait-superset: ## Wait until the Superset HTTP health endpoint responds
+	$(wait_for_superset)
+
+superset-init: wait-superset ## Initialize Superset metadata and admin user
+	$(COMPOSE) exec -T superset superset db upgrade
+	@output="$$($(COMPOSE) exec -T superset sh -ec 'superset fab create-admin --username "$$SUPERSET_ADMIN_USER" --firstname Admin --lastname User --email "$$SUPERSET_ADMIN_EMAIL" --password "$$SUPERSET_ADMIN_PASSWORD"' 2>&1)" || { \
+		status=$$?; echo "$$output"; echo "$$output" | grep -qi "already exists" || exit $$status; \
+	}
+	$(COMPOSE) exec -T superset superset init
+
+superset-logs: ## Follow Superset logs
+	$(COMPOSE) logs -f superset
+
+superset-import: wait-superset ## Import the Superset dashboard
+	$(COMPOSE) exec -T superset bash /app/project_superset/import_dashboard.sh
+
+demo-reset: reset ## Recreate a clean demo environment
+
+demo-load: load-static replay-pit-stops replay-lap-times replay-results replay-qualifying ## Load all demo data
+
+demo-transform: dbt-build ## Build and test analytical models
+
+demo-check: check-env ## Print demo data and monitoring checks
+	@set -a; . ./.env; set +a; bash scripts/demo_show.sh
+
+demo: demo-reset demo-load demo-transform superset-init superset-import demo-check ## Run the complete demo from scratch
+
+check-data: ## Verify that all required CSV files exist and are non-empty
+	@for file in $(DATA_FILES); do \
+		path="data/raw/$$file"; \
+		if [ ! -s "$$path" ]; then \
+			echo "Missing or empty required CSV: $$path" >&2; \
+			exit 1; \
+		fi; \
+		if ! head -n 1 "$$path" | grep -q ','; then \
+			echo "CSV header is invalid: $$path" >&2; \
+			exit 1; \
+		fi; \
+	done
+	@echo "All required CSV files are present and non-empty."
+
+smoke-test: check-env ## Verify ClickHouse, loader connectivity, and dbt connectivity
+	$(COMPOSE) ps
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "SELECT 1"
+	$(COMPOSE) run --rm loader uv run python -c "from src.clickhouse_client import get_client; print(get_client().command('SELECT 1'))"
+	$(COMPOSE) run --rm dbt uv run dbt debug --profiles-dir .
+
+test: ## Run loader unit tests
+	$(COMPOSE) run --rm --no-deps loader uv run python -m unittest discover -s tests
+
+ci: check-data test smoke-test ## Run local CI preflight against a running stack
+	$(COMPOSE) run --rm loader uv run python -m compileall -q .
+
+demo-show: demo-check ## Show the current demo state

@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CH="docker compose exec -T clickhouse clickhouse-client --user f1_app --password f1_app_password"
+: "${CLICKHOUSE_USER:?CLICKHOUSE_USER must be set}"
+: "${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD must be set}"
+
+ch() {
+  docker compose exec -T clickhouse clickhouse-client \
+    --user "${CLICKHOUSE_USER}" \
+    --password "${CLICKHOUSE_PASSWORD}" \
+    "$@"
+}
 
 section() {
   echo ""
@@ -34,7 +42,7 @@ docker compose ps
 
 section "2. ClickHouse databases"
 
-$CH --query "
+ch --query "
 SELECT
     name AS database_name
 FROM system.databases
@@ -45,7 +53,7 @@ FORMAT PrettyCompact
 
 section "3. Raw data row counts"
 
-$CH --query "
+ch --query "
 SELECT 'raw.drivers' AS table_name, count() AS rows_count FROM raw.drivers
 UNION ALL
 SELECT 'raw.constructors', count() FROM raw.constructors
@@ -66,7 +74,7 @@ FORMAT PrettyCompact
 
 section "4. dbt marts"
 
-$CH --query "
+ch --query "
 SELECT
     database,
     name AS table_name,
@@ -79,7 +87,7 @@ FORMAT PrettyCompact
 
 section "5. Top drivers by total points"
 
-$CH --query "
+ch --query "
 SELECT
     driver_name,
     round(total_points, 2) AS total_points,
@@ -94,7 +102,7 @@ FORMAT PrettyCompact
 
 section "6. Top constructors by total points"
 
-$CH --query "
+ch --query "
 SELECT
     constructor_name,
     round(total_points, 2) AS total_points,
@@ -109,7 +117,7 @@ FORMAT PrettyCompact
 
 section "7. Latest loader batches"
 
-$CH --query "
+ch --query "
 SELECT
     source_name,
     target_table,
@@ -125,7 +133,7 @@ FORMAT PrettyCompact
 
 section "8. Loader summary"
 
-$CH --query "
+ch --query "
 SELECT
     count() AS total_batches,
     sum(rows_loaded) AS total_rows_loaded,

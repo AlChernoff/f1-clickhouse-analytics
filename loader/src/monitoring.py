@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from clickhouse_connect.driver.client import Client
+if TYPE_CHECKING:
+    from clickhouse_connect.driver.client import Client
 
 
 def utc_now() -> datetime:
@@ -21,14 +23,15 @@ def write_load_batch(
     finished_at: datetime,
     status: str,
     error_message: str = "",
-) -> None:
+) -> UUID:
     duration_ms = int((finished_at - started_at).total_seconds() * 1000)
+    batch_id = uuid4()
 
     client.insert(
         "monitoring.load_batches",
         [
             [
-                str(uuid4()),
+                str(batch_id),
                 str(run_id),
                 source_name,
                 target_database,
@@ -53,6 +56,45 @@ def write_load_batch(
             "duration_ms",
             "status",
             "error_message",
+        ],
+    )
+
+    return batch_id
+
+
+def write_load_error(
+    client: Client,
+    run_id: UUID,
+    source_name: str,
+    target_database: str,
+    target_table: str,
+    error_message: str,
+    error_details: str,
+    batch_id: UUID | None = None,
+) -> None:
+    client.insert(
+        "monitoring.load_errors",
+        [
+            [
+                str(uuid4()),
+                str(run_id),
+                str(batch_id) if batch_id else None,
+                source_name,
+                target_database,
+                target_table,
+                error_message,
+                error_details,
+            ]
+        ],
+        column_names=[
+            "error_id",
+            "run_id",
+            "batch_id",
+            "source_name",
+            "target_database",
+            "target_table",
+            "error_message",
+            "error_details",
         ],
     )
 
