@@ -1,3 +1,7 @@
+WITH deduplicated AS (
+    {{ deduplicate('raw.circuits', 'circuit_id') }}
+)
+
 SELECT
     circuit_id,
     circuit_ref,
@@ -9,4 +13,4 @@ SELECT
     alt,
     url,
     loaded_at
-FROM raw.circuits
+FROM deduplicated

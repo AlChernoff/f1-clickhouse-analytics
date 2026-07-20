@@ -1,3 +1,7 @@
+WITH deduplicated AS (
+    {{ deduplicate('raw.results', 'result_id') }}
+)
+
 SELECT
     result_id,
     race_id,
@@ -18,4 +22,4 @@ SELECT
     fastest_lap_speed,
     status_id,
     loaded_at
-FROM raw.results
+FROM deduplicated

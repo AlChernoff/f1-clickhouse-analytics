@@ -1,3 +1,7 @@
+WITH deduplicated AS (
+    {{ deduplicate('raw.lap_times', 'race_id, driver_id, lap') }}
+)
+
 SELECT
     race_id,
     driver_id,
@@ -7,4 +11,4 @@ SELECT
     milliseconds,
     milliseconds / 1000.0 AS lap_seconds,
     loaded_at
-FROM raw.lap_times
+FROM deduplicated

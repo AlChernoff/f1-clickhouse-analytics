@@ -67,3 +67,21 @@ dbt-test:
 
 dbt-build:
 	docker compose run --rm dbt uv run dbt build --profiles-dir .
+
+truncate-raw:
+	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.drivers"
+	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.constructors"
+	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.circuits"
+	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.races"
+	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.results"
+	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.lap_times"
+	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.pit_stops"
+	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE raw.qualifying"
+
+truncate-monitoring:
+	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.load_batches"
+	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.load_errors"
+	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.pipeline_status"
+	docker compose exec clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.loader_stats_1m"
+
+demo-reset-data: truncate-raw truncate-monitoring

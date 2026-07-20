@@ -1,3 +1,7 @@
+WITH deduplicated AS (
+    {{ deduplicate('raw.drivers', 'driver_id') }}
+)
+
 SELECT
     driver_id,
     driver_ref,
@@ -10,4 +14,4 @@ SELECT
     nationality,
     url,
     loaded_at
-FROM raw.drivers
+FROM deduplicated
