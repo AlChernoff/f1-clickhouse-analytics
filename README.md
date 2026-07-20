@@ -35,6 +35,7 @@ make load                  # load dimensions and replay event data
 make transform             # run dbt build
 make replay TABLE=results  # replay one event table
 make clean-data            # delete loaded data, retain Docker volumes
+make lint                  # run Python static checks
 make test                  # run loader unit tests
 make ci                    # run local preflight checks
 ```

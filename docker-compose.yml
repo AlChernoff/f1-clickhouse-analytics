@@ -78,7 +78,6 @@ services:
     volumes:
       - ./loader:/app
       - ./data:/data
-    command: ["uv", "run", "python", "main.py"]
 
   dbt:
     build:

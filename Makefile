@@ -12,9 +12,8 @@ WAIT_SECONDS ?= 2
 DATA_FILES := drivers.csv constructors.csv circuits.csv races.csv results.csv lap_times.csv pit_stops.csv qualifying.csv
 
 .PHONY: help up down ps logs build reset clean-data check-data load replay transform \
-	bi-init clickhouse test smoke-test ci demo demo-show \
-	_wait-superset _load-static _superset-init _superset-import \
-	_truncate-raw _truncate-monitoring _drop-dwh _drop-marts
+	bi-init clickhouse test lint smoke-test ci demo demo-show \
+	_wait-superset _load-static _superset-init _superset-import
 
 .NOTPARALLEL: demo
 
@@ -89,13 +88,16 @@ clickhouse: ## Open an interactive ClickHouse client
 test: ## Run loader unit tests
 	$(COMPOSE) run --rm --no-deps loader uv run python -m unittest discover -s tests
 
+lint: ## Run Python static checks
+	$(COMPOSE) run --rm --no-deps loader uv run ruff check .
+
 smoke-test: check-env ## Verify ClickHouse, loader, and dbt connectivity
 	$(COMPOSE) ps
 	$(COMPOSE) exec -T clickhouse clickhouse-client --query "SELECT 1"
 	$(COMPOSE) run --rm loader uv run python -c "from src.clickhouse_client import get_client; print(get_client().command('SELECT 1'))"
 	$(COMPOSE) run --rm dbt uv run dbt debug --profiles-dir .
 
-ci: check-data test smoke-test ## Run local CI preflight against a running stack
+ci: check-data lint test smoke-test ## Run local CI preflight against a running stack
 	$(COMPOSE) run --rm loader uv run python -m compileall -q .
 
 demo: reset load transform bi-init demo-show ## Recreate and demonstrate the complete pipeline
@@ -103,7 +105,8 @@ demo: reset load transform bi-init demo-show ## Recreate and demonstrate the com
 demo-show: check-env ## Show loaded data, marts, and monitoring
 	@set -a; . ./.env; set +a; bash scripts/demo_show.sh
 
-clean-data: _truncate-raw _truncate-monitoring _drop-dwh _drop-marts ## Delete loaded data but keep Docker volumes
+clean-data: ## Delete loaded data but keep Docker volumes
+	$(COMPOSE) exec -T clickhouse clickhouse-client --multiquery < clickhouse/maintenance/clean_data.sql
 
 _load-static:
 	$(COMPOSE) run --rm loader uv run python load_static.py
@@ -120,42 +123,3 @@ _superset-init: _wait-superset
 
 _superset-import: _wait-superset
 	$(COMPOSE) exec -T superset bash /app/project_superset/import_dashboard.sh
-
-_truncate-raw:
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.drivers"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.constructors"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.circuits"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.races"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.results"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.lap_times"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.pit_stops"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE raw.qualifying"
-
-_truncate-monitoring:
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.load_batches"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.load_errors"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.pipeline_status"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE monitoring.loader_stats_1m"
-
-_drop-dwh:
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_circuits"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_constructors"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_drivers"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_lap_times"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_pit_stops"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_qualifying"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_races"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.stg_results"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.dim_constructors"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.dim_drivers"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.dim_races"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.fact_lap_times"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.fact_pit_stops"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS dwh.fact_race_results"
-
-_drop-marts:
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS marts.mart_constructor_performance"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS marts.mart_driver_performance"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS marts.mart_lap_time_analysis"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS marts.mart_pit_stop_efficiency"
-	$(COMPOSE) exec -T clickhouse clickhouse-client --query "DROP VIEW IF EXISTS marts.mart_season_summary"

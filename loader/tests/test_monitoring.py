@@ -48,7 +48,10 @@ class MonitoringTests(unittest.TestCase):
             error_details="traceback",
         )
 
-        self.assertEqual([call["table"] for call in client.calls], ["monitoring.load_batches", "monitoring.load_errors"])
+        self.assertEqual(
+            [call["table"] for call in client.calls],
+            ["monitoring.load_batches", "monitoring.load_errors"],
+        )
         self.assertEqual(client.calls[1]["data"][0][2], str(batch_id))
 
 

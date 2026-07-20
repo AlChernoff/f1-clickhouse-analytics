@@ -1,49 +1,55 @@
-# Grafana Monitoring
+# Grafana monitoring
 
-Grafana используется для мониторинга загрузки данных и состояния pipeline.
+Grafana monitors data ingestion and pipeline health.
 
 ## Dashboard
 
-Dashboard создается автоматически через provisioning.
+The dashboard is provisioned automatically.
 
-Название:
+Name:
 
-F1 Loader Monitoring
+**F1 Loader Monitoring**
 
-Путь в Grafana:
+Grafana path:
 
-Dashboards → F1 Analytics → F1 Loader Monitoring
+**Dashboards → F1 Analytics → F1 Loader Monitoring**
 
-## Datasource
+## Data source
 
-Datasource ClickHouse создается автоматически из файла:
+The ClickHouse data source is provisioned from:
 
-grafana/provisioning/datasources/clickhouse.yml
+`grafana/provisioning/datasources/clickhouse.yml`
 
-## Dashboard JSON
+## Dashboard definition
 
-Dashboard хранится в файле:
+The dashboard JSON is stored in:
 
-grafana/dashboards/f1_loader_monitoring.json
+`grafana/dashboards/f1_loader_monitoring.json`
 
-## Метрики
+## Metrics and widgets
 
-Dashboard показывает:
+The dashboard shows:
 
-- общее количество загруженных строк;
-- количество успешных batch-загрузок;
-- количество failed batch-загрузок;
-- среднюю длительность batch-загрузки;
-- rows loaded per minute;
-- batches per minute;
-- последние load batches;
-- последние pipeline statuses.
+- total loaded rows;
+- successful and failed batch counts;
+- average batch duration;
+- rows and batches loaded per minute;
+- batch error rate;
+- failed pipeline runs in the selected time range;
+- time of the last successful batch and last loader error;
+- latest load batches, loader errors, and pipeline statuses.
+
+The error-rate panel uses these thresholds:
+
+- green: below 1%;
+- orange: 1% to 5%;
+- red: 5% or higher.
 
 ## Source tables
 
-Dashboard использует таблицы:
+The dashboard queries:
 
-- monitoring.load_batches
-- monitoring.load_errors
-- monitoring.loader_stats_1m
-- monitoring.pipeline_status
+- `monitoring.load_batches`;
+- `monitoring.load_errors`;
+- `monitoring.loader_stats_1m`;
+- `monitoring.pipeline_status`.

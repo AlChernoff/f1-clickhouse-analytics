@@ -7,7 +7,13 @@ from uuid import uuid4
 import yaml
 
 from src.clickhouse_client import get_client
-from src.csv_utils import apply_table_specific_mapping, clean_dataframe, normalize_columns, read_csv, select_target_columns
+from src.csv_utils import (
+    apply_table_specific_mapping,
+    clean_dataframe,
+    normalize_columns,
+    read_csv,
+    select_target_columns,
+)
 from src.monitoring import utc_now, write_load_batch, write_load_error, write_pipeline_status
 
 

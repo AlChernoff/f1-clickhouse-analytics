@@ -8,9 +8,9 @@ RUN apt-get update \
 
 COPY --from=ghcr.io/astral-sh/uv:0.5.4 /uv /uvx /bin/
 
-COPY dbt/pyproject.toml /dbt/pyproject.toml
+COPY dbt/pyproject.toml dbt/uv.lock /dbt/
 
-RUN uv sync --no-dev
+RUN uv sync --frozen --no-dev
 
 COPY dbt/ /dbt/
 

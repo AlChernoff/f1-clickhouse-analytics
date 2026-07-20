@@ -10,7 +10,12 @@ from uuid import uuid4
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.modules.setdefault("pandas", Mock())
 
-from replay_loader import load_event_table, non_negative_float, positive_int, validate_replay_settings
+from replay_loader import (  # noqa: E402
+    load_event_table,
+    non_negative_float,
+    positive_int,
+    validate_replay_settings,
+)
 
 
 class FakeClient:
@@ -49,7 +54,10 @@ class ReplayValidationTests(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 load_event_table(client, Path(directory), item, uuid4(), 10, 0)
 
-        self.assertEqual([call["table"] for call in client.calls], ["monitoring.load_batches", "monitoring.load_errors"])
+        self.assertEqual(
+            [call["table"] for call in client.calls],
+            ["monitoring.load_batches", "monitoring.load_errors"],
+        )
 
 
 if __name__ == "__main__":

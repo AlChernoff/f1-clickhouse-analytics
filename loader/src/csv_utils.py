@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 NULL_VALUES = ["\\N", "N", "NULL", "null", ""]
 
 

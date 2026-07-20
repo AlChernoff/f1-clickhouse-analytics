@@ -9,7 +9,13 @@ from uuid import uuid4
 import yaml
 
 from src.clickhouse_client import get_client
-from src.csv_utils import apply_table_specific_mapping, clean_dataframe, normalize_columns, read_csv, select_target_columns
+from src.csv_utils import (
+    apply_table_specific_mapping,
+    clean_dataframe,
+    normalize_columns,
+    read_csv,
+    select_target_columns,
+)
 from src.monitoring import utc_now, write_load_batch, write_load_error, write_pipeline_status
 
 
@@ -108,7 +114,11 @@ def load_event_table(client, raw_data_dir: Path, item: dict, run_id, batch_size:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--table", default="lap_times", help="Table to replay: lap_times, pit_stops, results, qualifying, or all")
+    parser.add_argument(
+        "--table",
+        default="lap_times",
+        help="Table to replay: lap_times, pit_stops, results, qualifying, or all",
+    )
     parser.add_argument("--batch-size", type=positive_int, default=None)
     parser.add_argument("--sleep-seconds", type=non_negative_float, default=None)
     args = parser.parse_args()
