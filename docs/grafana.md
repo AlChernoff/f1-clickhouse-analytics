@@ -30,11 +30,17 @@ The dashboard JSON is stored in:
 
 The dashboard shows:
 
-- total loaded rows;
+- total rows published to Kafka;
 - successful and failed batch counts;
 - average batch duration;
-- rows and batches loaded per minute;
+- rows published and batches delivered per minute;
+- average producer duration per minute;
+- successful and failed producer batches per minute;
 - latest producer batches and pipeline statuses.
+
+`monitoring.load_batches` confirms delivery to Kafka. The **Producer to RAW
+verification** section in `make demo-show` confirms that ClickHouse has consumed
+the published event rows into the RAW layer.
 
 ## Source tables
 

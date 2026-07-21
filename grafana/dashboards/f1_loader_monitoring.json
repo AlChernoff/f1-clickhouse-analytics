@@ -5,7 +5,7 @@
   "tags": ["f1", "clickhouse", "loader", "monitoring"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 4,
+  "version": 5,
   "refresh": "10s",
   "time": {
     "from": "now-30d",
@@ -18,7 +18,7 @@
     {
       "id": 1,
       "type": "stat",
-      "title": "Rows loaded",
+      "title": "Rows published",
       "datasource": {
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
@@ -32,7 +32,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT sum(rows_loaded) AS rows_loaded FROM monitoring.load_batches WHERE status = 'success'",
+          "rawSql": "SELECT sum(rows_loaded) AS rows_published FROM monitoring.load_batches WHERE status = 'success'",
           "format": 1
         }
       ],
@@ -154,7 +154,7 @@
     {
       "id": 5,
       "type": "timeseries",
-      "title": "Rows loaded per minute",
+      "title": "Rows published per minute",
       "datasource": {
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
@@ -168,7 +168,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT minute AS time, target_table, sum(rows_loaded) AS rows_loaded FROM monitoring.loader_stats_1m WHERE minute >= $__fromTime AND minute <= $__toTime GROUP BY time, target_table ORDER BY time",
+          "rawSql": "SELECT minute AS time, target_table, sum(rows_loaded) AS rows_published FROM monitoring.loader_stats_1m WHERE minute >= $__fromTime AND minute <= $__toTime GROUP BY time, target_table ORDER BY time",
           "format": 0
         }
       ],
@@ -220,7 +220,7 @@
     {
       "id": 7,
       "type": "table",
-      "title": "Latest load batches",
+      "title": "Latest producer batches",
       "datasource": {
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
@@ -267,6 +267,66 @@
       "options": {
         "showHeader": true,
         "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Average producer duration per minute",
+      "description": "Average time to publish one batch to Kafka.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawSql": "SELECT minute AS time, target_table, round(sum(total_duration_ms) / nullIf(sum(batches_count), 0), 2) AS avg_duration_ms FROM monitoring.loader_stats_1m WHERE minute >= $__fromTime AND minute <= $__toTime GROUP BY time, target_table ORDER BY time",
+          "format": 0
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "none"}
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Successful and failed batches per minute",
+      "description": "Producer delivery outcomes grouped by minute.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawSql": "SELECT minute AS time, sum(success_count) AS successful_batches, sum(failed_count) AS failed_batches FROM monitoring.loader_stats_1m WHERE minute >= $__fromTime AND minute <= $__toTime GROUP BY time ORDER BY time",
+          "format": 0
+        }
+      ],
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "none"}
       }
     }
   ]

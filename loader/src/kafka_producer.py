@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from datetime import date, datetime
 from typing import Any
 from uuid import UUID, uuid5
@@ -24,6 +25,7 @@ INTEGER_COLUMNS = {
 }
 
 EVENT_NAMESPACE = UUID("f2a0bf7c-0b1d-42ca-8ca6-7d9678ba8685")
+MAX_PRODUCE_RETRIES = 3
 
 
 def json_default(value: Any) -> str:
@@ -93,12 +95,7 @@ class KafkaEventProducer:
                 "published_at": published_at_value,
                 **row,
             }
-            self.producer.produce(
-                topic=topic,
-                key=key.encode(),
-                value=json.dumps(message, default=json_default).encode(),
-                on_delivery=self._on_delivery,
-            )
+            self._produce(topic, key, message)
             self.producer.poll(0)
 
         outstanding = self.producer.flush(30)
@@ -106,6 +103,24 @@ class KafkaEventProducer:
             raise TimeoutError(f"Kafka producer did not deliver {outstanding} message(s) to {topic}")
         if self.delivery_errors:
             raise RuntimeError("Kafka delivery failed: " + "; ".join(self.delivery_errors))
+
+    def _produce(self, topic: str, key: str, message: dict[str, Any]) -> None:
+        for attempt in range(1, MAX_PRODUCE_RETRIES + 1):
+            try:
+                self.producer.produce(
+                    topic=topic,
+                    key=key.encode(),
+                    value=json.dumps(message, default=json_default).encode(),
+                    on_delivery=self._on_delivery,
+                )
+                return
+            except BufferError:
+                if attempt == MAX_PRODUCE_RETRIES:
+                    raise TimeoutError(
+                        f"Kafka producer queue remained full after {MAX_PRODUCE_RETRIES} attempts"
+                    ) from None
+                self.producer.poll(1)
+                time.sleep(0.1)
 
     def _on_delivery(self, error: Any, _message: Any) -> None:
         if error is not None:

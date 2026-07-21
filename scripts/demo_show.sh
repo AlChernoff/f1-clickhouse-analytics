@@ -72,7 +72,34 @@ ORDER BY sort_order
 FORMAT PrettyCompact
 "
 
-section "4. dbt marts"
+section "4. Producer to RAW verification"
+
+ch --query "
+SELECT
+    published.target_table,
+    published.rows_published,
+    raw.rows_in_raw,
+    published.rows_published = raw.rows_in_raw AS rows_match
+FROM
+(
+    SELECT target_table, sum(rows_loaded) AS rows_published
+    FROM monitoring.load_batches
+    WHERE status = 'success'
+      AND target_table IN ('results', 'qualifying', 'lap_times', 'pit_stops')
+    GROUP BY target_table
+) AS published
+INNER JOIN
+(
+    SELECT 'results' AS target_table, count() AS rows_in_raw FROM raw.results
+    UNION ALL SELECT 'qualifying', count() FROM raw.qualifying
+    UNION ALL SELECT 'lap_times', count() FROM raw.lap_times
+    UNION ALL SELECT 'pit_stops', count() FROM raw.pit_stops
+) AS raw USING target_table
+ORDER BY indexOf(['results', 'qualifying', 'lap_times', 'pit_stops'], published.target_table)
+FORMAT PrettyCompact
+"
+
+section "5. dbt marts"
 
 ch --query "
 SELECT
@@ -85,7 +112,7 @@ ORDER BY database, name
 FORMAT PrettyCompact
 "
 
-section "5. Top drivers by total points"
+section "6. Top drivers by total points"
 
 ch --query "
 SELECT
@@ -100,7 +127,7 @@ LIMIT 10
 FORMAT PrettyCompact
 "
 
-section "6. Top constructors by total points"
+section "7. Top constructors by total points"
 
 ch --query "
 SELECT
@@ -115,13 +142,13 @@ LIMIT 10
 FORMAT PrettyCompact
 "
 
-section "7. Latest producer batches"
+section "8. Latest producer batches"
 
 ch --query "
 SELECT
     source_name,
     target_table,
-    rows_loaded,
+    rows_loaded AS rows_published,
     duration_ms,
     status,
     formatDateTime(started_at, '%F %T') AS started_at
@@ -131,12 +158,12 @@ LIMIT 10
 FORMAT PrettyCompact
 "
 
-section "8. Producer summary"
+section "9. Producer summary"
 
 ch --query "
 SELECT
     count() AS total_batches,
-    sum(rows_loaded) AS total_rows_loaded,
+    sum(rows_loaded) AS total_rows_published,
     countIf(status = 'success') AS successful_batches,
     countIf(status = 'failed') AS failed_batches,
     round(avg(duration_ms), 2) AS avg_duration_ms
@@ -144,7 +171,7 @@ FROM monitoring.load_batches
 FORMAT PrettyCompact
 "
 
-section "9. Dashboards"
+section "10. Dashboards"
 
 echo "Grafana monitoring:"
 echo "  http://localhost:3000"
