@@ -16,6 +16,7 @@ from src.csv_utils import (
     read_csv,
     select_target_columns,
 )
+from src.kafka_producer import KafkaEventProducer
 from src.monitoring import utc_now, write_load_batch, write_load_error, write_pipeline_status
 
 
@@ -45,7 +46,15 @@ def validate_replay_settings(batch_size: int, sleep_seconds: float) -> None:
         raise ValueError("Replay sleep seconds must be zero or greater")
 
 
-def load_event_table(client, raw_data_dir: Path, item: dict, run_id, batch_size: int, sleep_seconds: float) -> None:
+def load_event_table(
+    client,
+    raw_data_dir: Path,
+    item: dict,
+    run_id,
+    batch_size: int,
+    sleep_seconds: float,
+    producer: KafkaEventProducer | None = None,
+) -> None:
     source_file = item["source_file"]
     target_database = item["target_database"]
     target_table = item["target_table"]
@@ -65,7 +74,15 @@ def load_event_table(client, raw_data_dir: Path, item: dict, run_id, batch_size:
 
         for batch_number, batch_df in enumerate(iter_batches(df, batch_size), start=1):
             started_at = utc_now()
-            client.insert_df(full_table_name, batch_df)
+            if producer is None:
+                raise RuntimeError("Kafka producer is required for event replay")
+            producer.publish_rows(
+                target_table=target_table,
+                rows=batch_df.to_dict(orient="records"),
+                run_id=run_id,
+                source_file=source_file,
+                published_at=started_at,
+            )
             finished_at = utc_now()
             write_load_batch(
                 client=client,
@@ -81,7 +98,7 @@ def load_event_table(client, raw_data_dir: Path, item: dict, run_id, batch_size:
 
             print(
                 f"[{source_file}] batch={batch_number}, "
-                f"rows={len(batch_df)}, target={full_table_name}"
+                f"rows={len(batch_df)}, topic published for target={full_table_name}"
             )
             if sleep_seconds > 0 and batch_number * batch_size < len(df):
                 time.sleep(sleep_seconds)
@@ -146,6 +163,7 @@ def main() -> None:
 
     run_id = uuid4()
     client = get_client()
+    producer = KafkaEventProducer.from_environment()
 
     write_pipeline_status(
         client=client,
@@ -164,6 +182,7 @@ def main() -> None:
                 run_id=run_id,
                 batch_size=batch_size,
                 sleep_seconds=sleep_seconds,
+                producer=producer,
             )
     except Exception as exc:
         write_pipeline_status(

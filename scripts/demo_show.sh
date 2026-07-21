@@ -18,19 +18,14 @@ section() {
   echo "============================================================"
 }
 
-subsection() {
-  echo ""
-  echo "------------------------------------------------------------"
-  echo "$1"
-  echo "------------------------------------------------------------"
-}
-
 section "F1 ClickHouse Analytics Demo"
 
 echo "Project pipeline:"
 echo ""
 echo "  CSV files"
-echo "    -> Python replay loader"
+echo "    -> Python Kafka producer"
+echo "    -> Apache Kafka"
+echo "    -> ClickHouse Kafka Engine"
 echo "    -> ClickHouse raw layer"
 echo "    -> dbt DWH and marts"
 echo "    -> Grafana monitoring"
@@ -51,24 +46,29 @@ ORDER BY name
 FORMAT PrettyCompact
 "
 
-section "3. Raw data row counts"
+section "3. RAW data row counts"
 
 ch --query "
-SELECT 'raw.drivers' AS table_name, count() AS rows_count FROM raw.drivers
-UNION ALL
-SELECT 'raw.constructors', count() FROM raw.constructors
-UNION ALL
-SELECT 'raw.circuits', count() FROM raw.circuits
-UNION ALL
-SELECT 'raw.races', count() FROM raw.races
-UNION ALL
-SELECT 'raw.results', count() FROM raw.results
-UNION ALL
-SELECT 'raw.lap_times', count() FROM raw.lap_times
-UNION ALL
-SELECT 'raw.pit_stops', count() FROM raw.pit_stops
-UNION ALL
-SELECT 'raw.qualifying', count() FROM raw.qualifying
+SELECT table_name, rows_count
+FROM
+(
+    SELECT 1 AS sort_order, 'raw.drivers' AS table_name, count() AS rows_count FROM raw.drivers
+    UNION ALL
+    SELECT 2, 'raw.constructors', count() FROM raw.constructors
+    UNION ALL
+    SELECT 3, 'raw.circuits', count() FROM raw.circuits
+    UNION ALL
+    SELECT 4, 'raw.races', count() FROM raw.races
+    UNION ALL
+    SELECT 5, 'raw.results', count() FROM raw.results
+    UNION ALL
+    SELECT 6, 'raw.qualifying', count() FROM raw.qualifying
+    UNION ALL
+    SELECT 7, 'raw.lap_times', count() FROM raw.lap_times
+    UNION ALL
+    SELECT 8, 'raw.pit_stops', count() FROM raw.pit_stops
+)
+ORDER BY sort_order
 FORMAT PrettyCompact
 "
 
@@ -115,7 +115,7 @@ LIMIT 10
 FORMAT PrettyCompact
 "
 
-section "7. Latest loader batches"
+section "7. Latest producer batches"
 
 ch --query "
 SELECT
@@ -124,14 +124,14 @@ SELECT
     rows_loaded,
     duration_ms,
     status,
-    formatDateTime(started_at, '%Y-%m-%d %H:%M:%S') AS started_at
+    formatDateTime(started_at, '%F %T') AS started_at
 FROM monitoring.load_batches
 ORDER BY started_at DESC
 LIMIT 10
 FORMAT PrettyCompact
 "
 
-section "8. Loader summary"
+section "8. Producer summary"
 
 ch --query "
 SELECT

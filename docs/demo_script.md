@@ -8,7 +8,7 @@ Place the eight required CSV files in `data/raw`, then run:
 make demo
 ```
 
-This command resets the local environment, loads static and event data, runs dbt, initializes Superset, imports the dashboard, and prints validation output. It removes local Docker volumes.
+This command resets the local environment, shows Kafka topics, loads static data, publishes event data to Kafka, waits until ClickHouse consumes it, runs dbt, initializes Superset, imports the dashboard, and prints validation output. It removes local Docker volumes.
 
 ## During the presentation
 
@@ -25,7 +25,7 @@ Then open:
 
 ## Talking points
 
-1. Historical CSV files are replayed in batches by the Python loader.
+1. Historical event CSV files are replayed in batches by the Python Kafka producer; ClickHouse consumes the corresponding topics into RAW tables.
 2. ClickHouse stores raw data and loader monitoring events.
 3. dbt builds staging, DWH, and mart views.
 4. Grafana shows batch throughput, failures, and pipeline status.

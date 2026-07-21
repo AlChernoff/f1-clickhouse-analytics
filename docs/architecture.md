@@ -5,7 +5,11 @@
 ```text
 F1 CSV Dataset
       ↓
-Python Replay Loader
+Python Kafka Producer
+      ↓
+Apache Kafka
+      ↓
+ClickHouse Kafka Engine + Materialized Views
       ↓
 ClickHouse RAW Layer
       ↓
@@ -24,9 +28,17 @@ Grafana Monitoring
 
 The main analytical data store of the project. It is used for raw data, analytical marts, aggregates, and monitoring tables.
 
-### Python Replay Loader
+### Python Replay Producer
 
-The data loading service. It reads historical Formula 1 CSV data and loads it into ClickHouse in small batches, simulating real-time event ingestion.
+The data loading service. It reads historical Formula 1 event CSV data, normalizes rows, and publishes small batches to Kafka. Static dimension CSV files continue to load directly into ClickHouse.
+
+### Apache Kafka
+
+The asynchronous transport for event data. A local single-node KRaft broker stores replayed event messages until ClickHouse consumes them.
+
+### ClickHouse Kafka Engine
+
+Kafka-engine tables consume one topic per event type. Materialized views write the consumed rows into the existing `raw` tables, so dbt models keep their existing source contract.
 
 ### dbt
 

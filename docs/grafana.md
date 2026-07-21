@@ -34,22 +34,12 @@ The dashboard shows:
 - successful and failed batch counts;
 - average batch duration;
 - rows and batches loaded per minute;
-- batch error rate;
-- failed pipeline runs in the selected time range;
-- time of the last successful batch and last loader error;
-- latest load batches, loader errors, and pipeline statuses.
-
-The error-rate panel uses these thresholds:
-
-- green: below 1%;
-- orange: 1% to 5%;
-- red: 5% or higher.
+- latest producer batches and pipeline statuses.
 
 ## Source tables
 
 The dashboard queries:
 
 - `monitoring.load_batches`;
-- `monitoring.load_errors`;
 - `monitoring.loader_stats_1m`;
 - `monitoring.pipeline_status`.

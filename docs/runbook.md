@@ -17,6 +17,7 @@ make replay TABLE=lap_times
 ```
 
 Available values: `lap_times`, `pit_stops`, `results`, `qualifying`, and `all`.
+The command publishes to Kafka; ClickHouse consumes the messages asynchronously through Kafka-engine tables and materialized views. Use `make kafka-topics` to verify that the local topics are available.
 
 ## Diagnostics
 

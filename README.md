@@ -2,7 +2,7 @@
 
 [![Quality checks](https://github.com/AlChernoff/f1-clickhouse-analytics/actions/workflows/quality.yml/badge.svg?branch=main)](https://github.com/AlChernoff/f1-clickhouse-analytics/actions/workflows/quality.yml?query=branch%3Amain)
 
-Local analytics platform for Formula 1 data: Python loads CSV files into ClickHouse, dbt builds analytical views, Grafana monitors ingestion, and Superset presents dashboards.
+Local analytics platform for Formula 1 data: Python publishes historical event CSV data to Kafka, ClickHouse consumes it into the RAW layer, dbt builds analytical views, Grafana monitors ingestion, and Superset presents dashboards.
 
 ## Quick start
 
@@ -33,9 +33,11 @@ Default local credentials are defined in `.env` (`admin` / `admin` in `.env.exam
 
 ```bash
 make up                    # start services
-make load                  # load dimensions and replay event data
-make transform             # run dbt build
-make replay TABLE=results  # replay one event table
+make load                  # load static dimensions and publish all event data to Kafka
+make transform             # run dbt build after Kafka consumption catches up
+make replay TABLE=results  # publish one event source to Kafka
+make kafka-topics          # list event topics
+make kafka-consumers       # show ClickHouse Kafka consumer state
 make clean-data            # delete loaded data, retain Docker volumes
 make lint                  # run Python static checks
 make test                  # run loader unit tests
@@ -50,7 +52,7 @@ The project uses the Formula 1 World Championship dataset from [Kaggle](https://
 
 ## What this project demonstrates
 
-- configurable replay ingestion from historical CSV files;
+- configurable Kafka-backed replay ingestion from historical CSV files;
 - ClickHouse raw tables with ReplacingMergeTree deduplication;
 - dbt staging, DWH, and mart modelling with data-quality tests;
 - operational observability through loader monitoring tables and Grafana;
@@ -60,8 +62,9 @@ The project uses the Formula 1 World Championship dataset from [Kaggle](https://
 
 ```mermaid
 flowchart LR
-    CSV[F1 CSV dataset] --> Loader[Python replay loader]
-    Loader --> Raw[ClickHouse raw layer]
+    CSV[F1 CSV dataset] --> Loader[Python replay producer]
+    Loader --> Kafka[Apache Kafka]
+    Kafka --> Raw[ClickHouse Kafka Engine]
     Raw --> dbt[dbt transformations]
     dbt --> Marts[ClickHouse DWH and marts]
     Loader --> Grafana[Grafana monitoring]
@@ -72,6 +75,8 @@ flowchart LR
 F1 CSV Dataset
       ↓
 Python Replay Loader
+      ↓
+Apache Kafka
       ↓
 ClickHouse RAW Layer
       ↓

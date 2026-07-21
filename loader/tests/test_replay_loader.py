@@ -59,6 +59,18 @@ class ReplayValidationTests(unittest.TestCase):
             ["monitoring.load_batches", "monitoring.load_errors"],
         )
 
+    def test_event_replay_requires_kafka_producer(self) -> None:
+        client = FakeClient()
+        item = {
+            "source_file": "missing.csv",
+            "target_database": "raw",
+            "target_table": "drivers",
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(FileNotFoundError):
+                load_event_table(client, Path(directory), item, uuid4(), 10, 0, producer=None)
+
 
 if __name__ == "__main__":
     unittest.main()

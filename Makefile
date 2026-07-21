@@ -11,9 +11,9 @@ WAIT_SECONDS ?= 2
 
 DATA_FILES := drivers.csv constructors.csv circuits.csv races.csv results.csv lap_times.csv pit_stops.csv qualifying.csv
 
-.PHONY: help up down ps logs build reset clean-data check-data load replay transform \
+.PHONY: help up down ps logs build reset clean-data check-data load replay kafka-topics kafka-consumers transform \
 	bi-init clickhouse test lint smoke-test ci demo demo-show \
-	_wait-superset _load-static _superset-init _superset-import
+	_wait-superset _wait-event-ingestion _load-static _superset-init _superset-import
 
 .NOTPARALLEL: demo
 
@@ -70,12 +70,19 @@ check-data: ## Verify required CSV files are present and non-empty
 	done
 	@echo "All required CSV files are present and non-empty."
 
-load: check-data ## Load static data and replay all event tables
+load: check-data ## Load static data and publish all event data to Kafka
 	$(MAKE) --no-print-directory _load-static
 	$(MAKE) --no-print-directory replay TABLE=all
+	$(MAKE) --no-print-directory _wait-event-ingestion
 
-replay: check-data ## Replay events; use TABLE=lap_times|pit_stops|results|qualifying|all
-	$(COMPOSE) run --rm loader uv run python replay_loader.py --table $(TABLE) --batch-size $(REPLAY_BATCH_SIZE) --sleep-seconds $(REPLAY_SLEEP_SECONDS)
+replay: check-data ## Publish event replay to Kafka; use TABLE=lap_times|pit_stops|results|qualifying|all
+	$(COMPOSE) run --rm --no-deps loader uv run python replay_loader.py --table $(TABLE) --batch-size $(REPLAY_BATCH_SIZE) --sleep-seconds $(REPLAY_SLEEP_SECONDS)
+
+kafka-topics: ## List Kafka topics used by event ingestion
+	$(COMPOSE) exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
+
+kafka-consumers: ## Show ClickHouse Kafka consumer offsets and errors
+	$(COMPOSE) exec -T clickhouse clickhouse-client --query "SELECT table, assignments.topic, assignments.current_offset, num_messages_read, last_poll_time, exceptions.text FROM system.kafka_consumers WHERE database = 'kafka_ingestion' FORMAT PrettyCompact"
 
 transform: ## Build dbt models and run dbt tests
 	$(COMPOSE) run --rm dbt uv run dbt build --profiles-dir .
@@ -100,7 +107,7 @@ smoke-test: check-env ## Verify ClickHouse, loader, and dbt connectivity
 ci: check-data lint test smoke-test ## Run local CI preflight against a running stack
 	$(COMPOSE) run --rm loader uv run python -m compileall -q .
 
-demo: reset load transform bi-init demo-show ## Recreate and demonstrate the complete pipeline
+demo: reset kafka-topics load transform bi-init demo-show ## Recreate the Kafka pipeline, BI, and validation output
 
 demo-show: check-env ## Show loaded data, marts, and monitoring
 	@set -a; . ./.env; set +a; bash scripts/demo_show.sh
@@ -109,10 +116,26 @@ clean-data: ## Delete loaded data but keep Docker volumes
 	$(COMPOSE) exec -T clickhouse clickhouse-client --multiquery < clickhouse/maintenance/clean_data.sql
 
 _load-static:
-	$(COMPOSE) run --rm loader uv run python load_static.py
+	$(COMPOSE) run --rm --no-deps loader uv run python load_static.py
 
 _wait-superset:
 	$(wait_for_superset)
+
+_wait-event-ingestion:
+	@for table in results qualifying lap_times pit_stops; do \
+		expected=$$(awk 'END { print NR - 1 }' data/raw/$$table.csv); \
+		attempt=1; \
+		until actual="$$($(COMPOSE) exec -T clickhouse clickhouse-client --query "SELECT count() FROM raw.$$table" 2>/dev/null)" && [ "$$actual" -ge "$$expected" ]; do \
+			if [ $$attempt -ge $(WAIT_ATTEMPTS) ]; then \
+				echo "Kafka ingestion for $$table did not reach $$expected rows." >&2; \
+				$(COMPOSE) logs --tail=100 kafka clickhouse >&2 || true; \
+				exit 1; \
+			fi; \
+			echo "Waiting for Kafka ingestion of $$table ($$attempt/$(WAIT_ATTEMPTS))..."; \
+			sleep $(WAIT_SECONDS); \
+			attempt=$$((attempt + 1)); \
+		done; \
+	done
 
 _superset-init: _wait-superset
 	$(COMPOSE) exec -T superset superset db upgrade
